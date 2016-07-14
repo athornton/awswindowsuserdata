@@ -1,3 +1,4 @@
+
 # Used for AWS Windows AMI Userdata.
 #
 # Two main functions:
@@ -17,12 +18,21 @@
 
 function Init-Log() {
     if ($global:logfile) {
-        write-output "Starting log" | out-file $global:logfile
+        $datestamp = Get-Date -format u
+        $l = "${datestamp}: "
+        if ( test-path $global:logfile ) {
+            write-output "${l}Restarting log" | out-file -append $global:logfile
+        } else {
+            write-output "${l}Starting log" | out-file $global:logfile
+        }
     }
 }
+
 function Log-ToFile($logstr) {
     if ($global:logfile) {
-        write-output $logstr | out-file -append $global:logfile
+        $datestamp = Get-Date -format u
+        $l = "${datestamp}: ${logstr}"
+        write-output $l | out-file -append $global:logfile
     }
 }
 
@@ -146,12 +156,12 @@ function Online-AllDisks($diskset) {
 }
 
 function RelabelAndMapDrives {
-    # EC2 read-only role is "readonlyEC2"
-    $role="readonlyEC2"
     # Get the AZ, which lets us derive the region
     $az=Get-EC2Metadata("/placement/availability-zone")
     $region=$az.Substring(0,$az.Length-1)
-    # Get session creds (need to launch instance with readonlyEC2 role)
+    # Get session creds (need to launch instance with role with 
+    #  policy to allow getting instance details)
+    $role=Get-EC2Metadata("/iam/security-credentials")
     $creds=(Get-EC2Metadata("/iam/security-credentials/$role")| ConvertFrom-Json)
     $id=Get-EC2Metadata("/instance-id")
     $aki=($creds.AccessKeyId)
